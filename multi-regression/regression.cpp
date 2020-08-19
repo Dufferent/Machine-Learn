@@ -65,24 +65,25 @@ int main()
             //1.构造h(x)= k_0 + k_1*x1 + k_2*x2 + k_3*x3 +...+k_n*xn
             for(int i=0;i<5;i++)
                 hx += (k[i] * vx[index][i]);
+            //2.得到偏差和与对应特征值的乘积
             for(int i=0;i<5;i++)
                 s_gap[i] += ((hx - database[y_line][index])*vx[index][i]);
-
+            //3.得到代价值，方便观察结果
             j += pow((hx - database[y_line][index]),2)/2/ablity;
             hx=0;
         }
         for(int i=0;i<5;i++)
         {
-            dj[i] = (1.0/ablity)*s_gap[i];
-            k[i]  = k[i] - A * dj[i]; 
+            dj[i] = (1.0/ablity)*s_gap[i];//4.得到代价函数的对于对应特征值的导数值
+            k[i]  = k[i] - A * dj[i];     //5.用多元梯度下降算法不断迭代得到最佳参数
         }
-
+        //6.显示整定结果
         for(int i=0;i<5;i++)
             printf("k[%d]=%0.3lf\t",i,k[i]);
         cout<<j<<endl;
+        //7.清零迭代变量，继续迭代
         for(int i=0;i<5;i++)
             s_gap[i] = 0;
-
         j=0;
         //usleep(1000*10);
     }
