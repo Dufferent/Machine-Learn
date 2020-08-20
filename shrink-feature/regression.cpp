@@ -53,7 +53,7 @@ void shrink_feature(double *array)
     //2.放缩使特征向量范围在+-1之间
     for(int i=0;i<ablity;i++)
     {
-        array[i] /= (max-min);
+        array[i] = (array[i]-min)/(max-min);
     }
     for(int i=0;i<ablity;i++)
     {
@@ -119,7 +119,7 @@ int main()
     for(int i=0;i<10;i++)
         vx[i] = (double*)malloc(sizeof(double)*5);
     creat_vx(vx);
-
+    //exit(0);
     while(1)
     {
         static int times = 1;
@@ -135,6 +135,7 @@ int main()
             j += pow((hx - database[y_line][index]),2)/2/ablity;
             hx=0;
         }
+        //同步更新(可以开线程分别同步跟新)
         for(int i=0;i<5;i++)
         {
             dj[i] = (1.0/ablity)*s_gap[i];//4.得到代价函数的对于对应特征值的导数值
@@ -143,7 +144,7 @@ int main()
         //6.显示整定结果
         for(int i=0;i<5;i++)
             printf("k[%d]=%0.3lf\t",i,k[i]);
-        cout<<j<<"\tct:"<<times<<endl;
+        cout<<"J(kn):"<<j<<"\tct:"<<times<<endl;
         //7.清零迭代变量，继续迭代
         for(int i=0;i<5;i++)
             s_gap[i] = 0;
