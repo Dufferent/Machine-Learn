@@ -4,3 +4,18 @@ logistic回归算法{
     3.梯度下降算法
     4.logistic回归算法
 }
+
+logistic回归算法 与 线性linear regression回归的区别与联系
+    for logistic regression
+        h(x) = 1/(1 - e^(- (vk * vx) ) )//vk 为拟合参数的向量形式 vx 为训练数据库的已知特征输入向量形式
+        J(k) = -(1/m)∑[ ylog(h(x)) + (1-y)log(1-h(x)) ] 
+        dJ/dk = (1/m)∑(h(x) - y)*x
+    for linear regression
+        h(x) = k0x0 + k1x1 +k2x2 +...
+             = vk * vx
+        J(k) = (1/2m)∑[ h(x) - y ]
+        dJ/dk = (1/m)∑(h(x) - y)*x
+
+logistic的h(x)在输入特征输出y=1时，若预测为1
+则代价为0，若预测为0，则代价无穷大。以此来跟新
+拟合参数。
