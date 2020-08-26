@@ -81,7 +81,8 @@ int main()
             for(int i=0;i<parameters;i++)
                 s_gap[i] += ( (hx - database[y_line][index])*vx[index][i] );
             //3.得到代价值，方便观察结果
-            j += pow((hx - database[y_line][index]),2)/2/ablity;
+            //j += pow((hx - database[y_line][index]),2)/2/ablity;
+            j += (database[y_line][index]*log(hx) + (1-database[y_line][index])*log(1-hx) )/ablity*(-1);
             fx=0;
         }
         //同步更新(可以开线程分别同步跟新)
