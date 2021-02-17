@@ -8,7 +8,8 @@
 
 using namespace std;
 
-#define A      0.1
+#define A      0.005
+#define ε      0.0001//ε
 #define ablity 10
 #define parameters 3
 #define y_line 2
@@ -198,6 +199,7 @@ int main()
     //exit(0);
     while(1)
     {
+        static long times = 1;
         for(int index=0;index<ablity;index++)
         {
             //1.step
@@ -270,24 +272,26 @@ int main()
         //5.step
         //梯度下降逐层更新
         //for layer 2
+        //printf("layer2 k:\r\n");
         for(int i=0;i<inlayer_nodes;i++)
         {
             for(int m=1;m<hiden_layer_nodes;m++)
             {
-                k_1[i][m-1] = k_1[i][m-1] - (A * D1[i][m-1])/ablity;
-                printf("%0.3lf  ",k_1[i][m]);
+                k_1[i][m-1] = 0.9997*k_1[i][m-1] - (A * D1[i][m-1])/ablity;//0.997~正则化
+                //printf("%0.3lf\t",k_1[i][m]);
             }
-            printf("\n");
+            //printf("\n");
         }    
         //for layer 3
+        //printf("layer3 k:\r\n");
         for(int i=0;i<hiden_layer_nodes;i++)
         {
-            for(int m=1;m<outlayer_nodes;m++)
+            for(int m=0;m<outlayer_nodes;m++)
             {
-                k_2[i][m] = k_2[i][m] - (A * D2[i][m])/ablity;
-                printf("%0.3lf  ",k_2[i][m]);
+                k_2[i][m] = 0.9997*k_2[i][m] - (A * D2[i][m])/ablity;
+                //printf("%0.3lf\t",k_2[i][m]);
             }
-            printf("\n");
+            //printf("\n");
         }
         //清空△ij的累计
         //for layer 2
@@ -299,9 +303,17 @@ int main()
         for(int m=0;m<outlayer_nodes;m++)
             D2[i][m] = 0;
         //显示代价变化
-        printf("cost:%0.3lf\r\n",J);
+        //printf("cost:%0.3lf\r\n",J);
+        
+        //usleep(10*1000);
+        times++;
+        
+        if( (times) == 1000000000)
+        {
+            printf("cost:%0.3lf\r\n",J);
+            break;
+        }
         J = 0;//清零代价
-        usleep(10*1000);
     }
     return 0;
 }
