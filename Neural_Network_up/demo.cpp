@@ -2,6 +2,7 @@
 #include "stdlib.h"
 #include "neural.h"
 #include "string.h"
+#include "time.h"
 
 void CHECK_PARM(int layers,unsigned int *nodes,double ***model);
 
@@ -13,6 +14,7 @@ int main(int argc,char** argv)
     unsigned int *nodes;
     double ***model;
 
+    srandom( (unsigned int)time(NULL) );
     printf  ("请输入网络层数!\r\n");
     scanf   ("%d",&layers);
     nodes = (unsigned int*)malloc(sizeof(unsigned int)*layers);
@@ -21,6 +23,7 @@ int main(int argc,char** argv)
         printf ("请输入第<%d>层的节点数!\r\n",i+1);
         scanf  ("%d",(int*)(&nodes[i]));
     }
+    // 神经网络中权重参数要随机分布，不能全为零
     model = (double***)malloc(sizeof(double**)*layers); //第一维:=>层级
     for (int i=0;i<layers;i++)                          //第二维:=>节点
         model[i] = (double**)malloc(sizeof(double*)*nodes[i]);
@@ -28,7 +31,9 @@ int main(int argc,char** argv)
         for (int j=0;j<nodes[i];j++)
         {
             model[i][j] = (double*)malloc(sizeof(double)*nodes[i+1]);
-            memset(model[i][j],0,sizeof(double)*nodes[i+1]);
+            // memset(model[i][j],0,sizeof(double)*nodes[i+1]);
+            for (int k=0;k<nodes[i+1];k++)
+                model[i][j][k] = (double)((random()%200)/100);
         }
     
     Create_Model(layers,nodes,&model);

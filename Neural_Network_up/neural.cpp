@@ -24,8 +24,8 @@ typedef char** chpp;
 #define MAX_DATA_ITEM 8192
 #define MAX_CHAR_LEN  64
 
-#define IMG_WIDTH 28
-#define IMG_HEIGHT 28
+#define IMG_WIDTH 183
+#define IMG_HEIGHT 183
 
 #define PREWITT_VERT 1
 #define PREWITT_HORI 2
@@ -34,11 +34,11 @@ typedef char** chpp;
 #define SCHARR_VERT 5
 #define SCHARR_HORI 6
 
-#define Fliter_Nums 2
-#define Final_Size  25
+#define Fliter_Nums 1
+#define Final_Size  90
 
-#define A 0.00001
-#define M 120
+#define A 0.3
+#define M 50
 /*
  * @parm::layers 神经网络的层数 
  * @parm::layer_nodes 每一层神经网络的节点个数->layer_nodes[0]->输入层的节点个数
@@ -84,12 +84,12 @@ int Create_Model(int layers,unsigned int *layer_nodes,double ***(parm[]))
     // }
     // printf  ("DEBUG::训练参数一览!\r\n");
     /* step2::=> 构建每一层节点对应的拟合函数(第一层没有映射源) */
-    for (int i=1;i<layers;i++)
-    {
-        Set_Simulate(nodes_parm,i-1,i,
-        &layer,layer_nodes[i-1],layer_nodes[i]
-        );
-    }
+    // for (int i=1;i<layers;i++)
+    // {
+    //     Set_Simulate(nodes_parm,i-1,i,
+    //     &layer,layer_nodes[i-1],layer_nodes[i],layers
+    //     );
+    // }
     /* step3::=> 反向传播,代价函数 */
     //--处理样本--
     // char data_root[128] = {0};
@@ -192,11 +192,11 @@ int Create_Model(int layers,unsigned int *layer_nodes,double ***(parm[]))
                 resize(tmps,tmps,Size(IMG_WIDTH,IMG_HEIGHT),0,0,INTER_LINEAR);
                 cvtColor(tmps,tmps,CV_RGB2GRAY);
                 Mat newtmps[Fliter_Nums];
-                newtmps[0] = Filiter(tmps,3,1,PREWITT_HORI,IMG_HEIGHT);
-                newtmps[1] = Filiter(tmps,3,1,PREWITT_VERT,IMG_HEIGHT);
+                //newtmps[0] = Filiter(tmps,3,1,PREWITT_HORI,IMG_HEIGHT);
+                //newtmps[1] = Filiter(tmps,3,1,PREWITT_VERT,IMG_HEIGHT);
                 // newtmps[2] = Filiter(tmps,3,1,SCHARR_HORI,IMG_HEIGHT);
                 // newtmps[3] = Filiter(tmps,3,1,SCHARR_VERT,IMG_HEIGHT);
-                // newtmps[4] = Filiter(tmps,3,1,SOBEL_HORI,IMG_HEIGHT);
+                newtmps[0] = Filiter(tmps,3,2,SOBEL_HORI,IMG_HEIGHT);
                 // newtmps[5] = Filiter(tmps,3,1,SOBEL_VERT,IMG_HEIGHT);
                 //--图片数据::[25x25x2]--
                 //--展开图片特征数据--
@@ -261,16 +261,17 @@ int Create_Model(int layers,unsigned int *layer_nodes,double ***(parm[]))
     {
         //--填充全连接层-- 97*97*6 => 每张图片的features => 全连接到第一层神经元上
         int uses = 0;
-        for (int sample=0;sample<tensor_count;sample+=6)
+        int sample = (random()%tensor_count);
+        while(1)
         {
+            sample = (sample + (random()%tensor_count))%tensor_count;
             for (int i=0;i<layer_nodes[0];i++)
                 layer[0][i] = data_set[sample][i];
             //--正向传播--
             for (int i=1;i<layers;i++)
             {
                 Set_Simulate(nodes_parm,i-1,i,
-                &layer,layer_nodes[i-1],layer_nodes[i]
-                );
+                &layer,layer_nodes[i-1],layer_nodes[i],layers);
             }
             //--得到了每一层对应的值--
             //--反向传播--
@@ -279,9 +280,10 @@ int Create_Model(int layers,unsigned int *layer_nodes,double ***(parm[]))
                 if (i==labels[sample])real_out[i]=1;
                 else real_out[i]=0;
             }
+            // printf ("Tensor<%d>th ::=> out[car::%lf people::%lf]\r\n",sample,real_out[0],real_out[1]);
             //--逐层计算误差--
             for (int i=0;i<layer_nodes[layers-1];i++)   // SOFTMAX层的误差先计算出来
-                gap[layers-1][i] = real_out[i] - layer[layers-1][i];
+                gap[layers-1][i] = layer[layers-1][i] - real_out[i];
             for (int i=layers-1;i>1;i--)
             {
                 Back_Simulate(nodes_parm,i-1,i,
@@ -313,28 +315,62 @@ int Create_Model(int layers,unsigned int *layer_nodes,double ***(parm[]))
 
     //--fit--
     //--随机取一个图片张量--
-    int pice = random()%tensor_count;
+    /*
+    for (int i=0;i<10;i++)
+    {
+        int pice = random()%tensor_count;
+        for (int i=0;i<layer_nodes[0];i++)
+            layer[0][i] = data_set[pice][i];
+        //--正向传播--
+        for (int i=1;i<layers;i++)
+        {
+            Set_Simulate(nodes_parm,i-1,i,
+            &layer,layer_nodes[i-1],layer_nodes[i],layers);
+        }
+        //--预测结果--
+        for (int i=0;i<ct;i++)
+            printf ("第<%d>张图片的预测结果::=> \
+            <%s>::probility::[%0.3lf]\r\n\n",pice,class_names[i],layer[layers-1][i]);
+    }
+    */
+    unsigned char *ts_tensor;
+    Mat ts_tmps = imread("./car.jpg");
+    if (!ts_tmps.empty())
+    {
+        resize(ts_tmps,ts_tmps,Size(IMG_WIDTH,IMG_HEIGHT),0,0,INTER_LINEAR);
+        cvtColor(ts_tmps,ts_tmps,CV_RGB2GRAY);
+        Mat newtmps[Fliter_Nums];
+        //newtmps[0] = Filiter(tmps,3,1,PREWITT_HORI,IMG_HEIGHT);
+        //newtmps[1] = Filiter(tmps,3,1,PREWITT_VERT,IMG_HEIGHT);
+        // newtmps[2] = Filiter(tmps,3,1,SCHARR_HORI,IMG_HEIGHT);
+        // newtmps[3] = Filiter(tmps,3,1,SCHARR_VERT,IMG_HEIGHT);
+        newtmps[0] = Filiter(ts_tmps,3,2,SOBEL_HORI,IMG_HEIGHT);
+        // newtmps[5] = Filiter(tmps,3,1,SOBEL_VERT,IMG_HEIGHT);
+        //--图片数据::[25x25x2]--
+        //--展开图片特征数据--
+        ts_tensor = Extend_Tensor(newtmps,Fliter_Nums);
+    }
+    for (int j=0;j<Final_Size*Final_Size*Fliter_Nums;j++)
+        data_set[0][j] = ts_tensor[j] / 255.0;
     for (int i=0;i<layer_nodes[0];i++)
-        layer[0][i] = data_set[pice][i];
+            layer[0][i] = data_set[0][i];
     //--正向传播--
     for (int i=1;i<layers;i++)
     {
         Set_Simulate(nodes_parm,i-1,i,
-        &layer,layer_nodes[i-1],layer_nodes[i]
-        );
+        &layer,layer_nodes[i-1],layer_nodes[i],layers);
     }
     //--预测结果--
     for (int i=0;i<ct;i++)
         printf ("第<%d>张图片的预测结果::=> \
-        <%s>::probility::[%0.3lf]\r\n",pice,class_names[i],layer[layers-1][i]);
-
+        <%s>::probility::[%0.3lf]\r\n\n",0,class_names[i],layer[layers-1][i]);
     return ct;
 }
 
 void Set_Simulate
 (double ***model,int pre_ly_index,
  int cur_ly_index, double ***layer,
- int pre_nds,int cur_nds)
+ int pre_nds,int cur_nds,int layers)
 {
     // printf ("DEBUG::=>更新第<%d>层->第<%d>层的正向传播结果...\r\n",pre_ly_index,cur_ly_index);
     // printf ("DEBUG::=>pre_ly_index::[%d] pre_nds::[%d]\r\n",pre_ly_index,pre_nds);
@@ -350,7 +386,7 @@ void Set_Simulate
             tmps += (pre_ly[j]*(model[pre_ly_index][j][i]));  
             // printf ("DEBUG::i::[%d]\tj::[%d]...\r\n",i,j);
         }
-        cur_ly[i] = 1/(1+exp((-1)*tmps));   //h(x)=>拟合函数
+        cur_ly[i] = 1/(1+exp((-1)*tmps));   //g(x)=>激活函数
         // printf ("DEBUG::=>cur_ly[%d]::VAL::[%lf]\r\n",i,cur_ly[i]);
     }
     // printf ("DEBUG::=>更新完毕...\r\n");

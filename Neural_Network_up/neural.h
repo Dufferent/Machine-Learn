@@ -5,7 +5,7 @@ int Create_Model(int layers,unsigned int *layer_nodes,double ***(parm[]));
 void Set_Simulate
 (double ***model,int pre_ly_index,
  int cur_ly_index, double ***layer,
- int pre_nds,int cur_nds);
+ int pre_nds,int cur_nds,int layers);
 void Back_Simulate
 (double ***model,int pre_ly_index,
  int cur_ly_index, double ***gap,
