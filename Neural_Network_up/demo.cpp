@@ -33,9 +33,9 @@ int main(int argc,char** argv)
             model[i][j] = (double*)malloc(sizeof(double)*nodes[i+1]);
             // memset(model[i][j],0,sizeof(double)*nodes[i+1]);
             for (int k=0;k<nodes[i+1];k++)
-                model[i][j][k] = (double)((random()%200)/100);
+                model[i][j][k] = (double)((random()%200)/100.0);
         }
-    
+    // CHECK_PARM(layers,nodes,model);
     Create_Model(layers,nodes,&model);
     // CHECK_PARM(layers,nodes,model);
     return 0;

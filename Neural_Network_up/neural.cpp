@@ -24,8 +24,8 @@ typedef char** chpp;
 #define MAX_DATA_ITEM 8192
 #define MAX_CHAR_LEN  64
 
-#define IMG_WIDTH 183
-#define IMG_HEIGHT 183
+#define IMG_WIDTH 182
+#define IMG_HEIGHT 182
 
 #define PREWITT_VERT 1
 #define PREWITT_HORI 2
@@ -34,11 +34,12 @@ typedef char** chpp;
 #define SCHARR_VERT 5
 #define SCHARR_HORI 6
 
-#define Fliter_Nums 1
-#define Final_Size  90
+#define Fliter_Nums 6
+#define Final_Size  15
 
-#define A 0.3
-#define M 50
+#define A 0.02
+#define G 0.9997
+#define M 80
 /*
  * @parm::layers 神经网络的层数 
  * @parm::layer_nodes 每一层神经网络的节点个数->layer_nodes[0]->输入层的节点个数
@@ -48,9 +49,10 @@ typedef char** chpp;
 */
 void CHECK_NODE(int layers,unsigned int *layer_nodes,double **layer);
 chpp Get_Data_Name(int &ct,char data_root[]);
-Mat Filiter(Mat &src,int f,int s,int flags,int size);
+Mat Filiter(Mat src,int f,int s,int flags,int size);
 unsigned char* Extend_Tensor(Mat *img_data,int nums);
 void Clear_Model_DGap(double ****model_gap,int layers,unsigned int *layer_nodes);
+Mat Polling_Layer(Mat src,int ly_sz);
 
 int Create_Model(int layers,unsigned int *layer_nodes,double ***(parm[]))
 {
@@ -61,16 +63,16 @@ int Create_Model(int layers,unsigned int *layer_nodes,double ***(parm[]))
     /* step1::=> 构建层级数组 */
     double **layer;
     layer = (double**)malloc(sizeof(double*)*layers);
-    printf  ("DEBUG::节点参数一览!\r\n");
+    // printf  ("DEBUG::节点参数一览!\r\n");
     for (int i=0;i<layers;i++)
     {
         layer[i] = (double*)malloc(sizeof(double)*layer_nodes[i]);
         memset(layer[i],0,layer_nodes[i]*sizeof(double));
-        printf ("LAYER<%d>:\n",i+1);
-        for (int j=0;j<layer_nodes[i];j++)
-            printf ("NODES<%d>: => VAL[%0.3lf]\n",j+1,layer[i][j]);
+        // printf ("LAYER<%d>:\n",i+1);
+        // for (int j=0;j<layer_nodes[i];j++)
+        //     printf ("NODES<%d>: => VAL[%0.3lf]\n",j+1,layer[i][j]);
     }
-    printf  ("DEBUG::节点参数一览!\r\n");
+    // printf  ("DEBUG::节点参数一览!\r\n");
     // printf  ("DEBUG::训练参数一览!\r\n");
     // for (int i=0;i<layers-1;i++)
     // {
@@ -135,7 +137,7 @@ int Create_Model(int layers,unsigned int *layer_nodes,double ***(parm[]))
         printf ("(%s),\r\n",class_names[i]);
     printf ("]\r\n");
     //--获取图像集的绝对路径--
-    printf ("img-dir::=>\r\n");
+    // printf ("img-dir::=>\r\n");
     int *img_count;
     chpp *img_name;
     img_count = (int*)malloc(sizeof(int)*ct);
@@ -146,8 +148,8 @@ int Create_Model(int layers,unsigned int *layer_nodes,double ***(parm[]))
         char data_img[MAX_CHAR_LEN*2]={0};
         sprintf (data_img,"%s%c%s%c",data_root,'/',class_names[i],'\0');
         img_name[i] = Get_Data_Name(img_count[i],data_img);
-        for (int j=0;j<img_count[i];j++)
-            printf ("%s\r\n",img_name[i][j]);
+        // for (int j=0;j<img_count[i];j++)
+        //     printf ("%s\r\n",img_name[i][j]);
     }
     chpp *img_dir;
     img_dir = (chpp*)malloc(sizeof(chpp)*ct);
@@ -192,21 +194,29 @@ int Create_Model(int layers,unsigned int *layer_nodes,double ***(parm[]))
                 resize(tmps,tmps,Size(IMG_WIDTH,IMG_HEIGHT),0,0,INTER_LINEAR);
                 cvtColor(tmps,tmps,CV_RGB2GRAY);
                 Mat newtmps[Fliter_Nums];
-                //newtmps[0] = Filiter(tmps,3,1,PREWITT_HORI,IMG_HEIGHT);
-                //newtmps[1] = Filiter(tmps,3,1,PREWITT_VERT,IMG_HEIGHT);
-                // newtmps[2] = Filiter(tmps,3,1,SCHARR_HORI,IMG_HEIGHT);
-                // newtmps[3] = Filiter(tmps,3,1,SCHARR_VERT,IMG_HEIGHT);
-                newtmps[0] = Filiter(tmps,3,2,SOBEL_HORI,IMG_HEIGHT);
-                // newtmps[5] = Filiter(tmps,3,1,SOBEL_VERT,IMG_HEIGHT);
-                //--图片数据::[25x25x2]--
+                newtmps[0] = Filiter(tmps,3,2,PREWITT_HORI,IMG_HEIGHT);
+                newtmps[1] = Filiter(tmps,3,2,PREWITT_VERT,IMG_HEIGHT);
+                newtmps[2] = Filiter(tmps,3,2,SCHARR_HORI,IMG_HEIGHT);
+                newtmps[3] = Filiter(tmps,3,2,SCHARR_VERT,IMG_HEIGHT);
+                newtmps[4] = Filiter(tmps,3,2,SOBEL_HORI,IMG_HEIGHT);
+                newtmps[5] = Filiter(tmps,3,2,SOBEL_VERT,IMG_HEIGHT);
+                newtmps[0] = Polling_Layer(newtmps[0],6);
+                newtmps[1] = Polling_Layer(newtmps[1],6);
+                newtmps[2] = Polling_Layer(newtmps[2],6);
+                newtmps[3] = Polling_Layer(newtmps[3],6);
+                newtmps[4] = Polling_Layer(newtmps[4],6);
+                newtmps[5] = Polling_Layer(newtmps[5],6);              
+                //--图片数据::[FINAL_SIZE^2xFliter_Nums]--
                 //--展开图片特征数据--
+                // imshow("view",newtmps[0]);
+                // waitKey(0);
                 tensor[tensor_count] = Extend_Tensor(newtmps,Fliter_Nums);
                 tensor_count++;
             }
         }
     }
     printf ("tensor[0]::[\r\n");
-    for (int i=0;i<10;i++)  //  打印第一张图片前十个张量数据
+    for (int i=500;i<550;i++)  //  打印第一张图片十个张量数据
         printf ("%2d \r\n",tensor[0][i]);
     printf ("...]\r\n");
     //--@parm::=>tensor 图片数据的张量
@@ -219,12 +229,13 @@ int Create_Model(int layers,unsigned int *layer_nodes,double ***(parm[]))
             data_set[i][j] = tensor[i][j] / 255.0;
     //--开始训练--
     printf ("data_set[0]::[\r\n");
-    for (int i=0;i<10;i++)  //  打印第一张图片前十个张量数据
+    for (int i=500;i<550;i++)  //  打印第一张图片十个张量数据
         printf (" %0.3lf \r\n",data_set[0][i]);
     printf ("...]\r\n");
     printf ("请输入训练时间:=>\r\n");
-    int times;
+    unsigned int times;
     scanf  ("%d",&times);
+    unsigned int all = times;
     /* start transform */  
     double **gap = (double**)malloc(sizeof(double*)*layers); //全连接层没有误差
     for (int i=0;i<layers;i++)
@@ -259,7 +270,7 @@ int Create_Model(int layers,unsigned int *layer_nodes,double ***(parm[]))
     double J = 0.0;
     while (times--)
     {
-        //--填充全连接层-- 97*97*6 => 每张图片的features => 全连接到第一层神经元上
+        //--填充全连接层-- FINAL_SIZE^2xFliter_Nums => 每张图片的features => 全连接到第一层神经元上
         int uses = 0;
         int sample = (random()%tensor_count);
         while(1)
@@ -287,7 +298,7 @@ int Create_Model(int layers,unsigned int *layer_nodes,double ***(parm[]))
             for (int i=layers-1;i>1;i--)
             {
                 Back_Simulate(nodes_parm,i-1,i,
-                &gap,layer,layer_nodes[i-1],layer_nodes[i]
+                &gap,layer,layer_nodes[i-1],layer_nodes[i],layer_nodes[i-2]
                 );
             }
             // sleep(2);
@@ -295,13 +306,13 @@ int Create_Model(int layers,unsigned int *layer_nodes,double ***(parm[]))
             for (int i=1;i<layers;i++)
                 Model_Simulate(&model_gap,i-1,i
                 ,gap,layer,layer_nodes[i-1],layer_nodes[i]);
-            //计算总代价方便调试
-            for (int i=0;i<ct;i++)
-                J += ((real_out[i]*log(layer[layers-1][i]) +
-                (1-real_out[i])*log(1-layer[layers-1][i]))*(-1)/M);
             //真实采用样本数
             uses++;
             if (uses > M)break;
+
+            for (int i=0;i<ct;i++)
+                J += ((real_out[i]*log(layer[layers-1][i]) +
+                    (1-real_out[i])*log(1-layer[layers-1][i]))*(-1)/M);
         }
         //--梯度下降--
         for (int i=1;i<layers;i++)
@@ -309,61 +320,21 @@ int Create_Model(int layers,unsigned int *layer_nodes,double ***(parm[]))
             layer_nodes[i-1],layer_nodes[i],uses);
         //--清空误差--
         Clear_Model_DGap(&model_gap,layers,layer_nodes);
-        printf ("代价J::=>[%0.6lf]\r\n",J);
+        //--计算总代价方便调试--
+        // printf ("代价J::=>[%0.6lf]\r\n",J);
+        system("clr.sh");
+        printf ("TRANSING...\r\n");
+        printf ("PROG::=> [");
+        for (int i=0;i<(all-times)/1.0/all*30;i++)
+            printf("#");
+        printf ("]<%d%c>\r\n",(int)((all-times)/1.0/all*100),'%');
+        printf ("J::=> [%0.6lf]\r\n",J);
         J=0;
     }
-
-    //--fit--
-    //--随机取一个图片张量--
-    /*
-    for (int i=0;i<10;i++)
-    {
-        int pice = random()%tensor_count;
-        for (int i=0;i<layer_nodes[0];i++)
-            layer[0][i] = data_set[pice][i];
-        //--正向传播--
-        for (int i=1;i<layers;i++)
-        {
-            Set_Simulate(nodes_parm,i-1,i,
-            &layer,layer_nodes[i-1],layer_nodes[i],layers);
-        }
-        //--预测结果--
-        for (int i=0;i<ct;i++)
-            printf ("第<%d>张图片的预测结果::=> \
-            <%s>::probility::[%0.3lf]\r\n\n",pice,class_names[i],layer[layers-1][i]);
-    }
-    */
-    unsigned char *ts_tensor;
-    Mat ts_tmps = imread("./car.jpg");
-    if (!ts_tmps.empty())
-    {
-        resize(ts_tmps,ts_tmps,Size(IMG_WIDTH,IMG_HEIGHT),0,0,INTER_LINEAR);
-        cvtColor(ts_tmps,ts_tmps,CV_RGB2GRAY);
-        Mat newtmps[Fliter_Nums];
-        //newtmps[0] = Filiter(tmps,3,1,PREWITT_HORI,IMG_HEIGHT);
-        //newtmps[1] = Filiter(tmps,3,1,PREWITT_VERT,IMG_HEIGHT);
-        // newtmps[2] = Filiter(tmps,3,1,SCHARR_HORI,IMG_HEIGHT);
-        // newtmps[3] = Filiter(tmps,3,1,SCHARR_VERT,IMG_HEIGHT);
-        newtmps[0] = Filiter(ts_tmps,3,2,SOBEL_HORI,IMG_HEIGHT);
-        // newtmps[5] = Filiter(tmps,3,1,SOBEL_VERT,IMG_HEIGHT);
-        //--图片数据::[25x25x2]--
-        //--展开图片特征数据--
-        ts_tensor = Extend_Tensor(newtmps,Fliter_Nums);
-    }
-    for (int j=0;j<Final_Size*Final_Size*Fliter_Nums;j++)
-        data_set[0][j] = ts_tensor[j] / 255.0;
-    for (int i=0;i<layer_nodes[0];i++)
-            layer[0][i] = data_set[0][i];
-    //--正向传播--
-    for (int i=1;i<layers;i++)
-    {
-        Set_Simulate(nodes_parm,i-1,i,
-        &layer,layer_nodes[i-1],layer_nodes[i],layers);
-    }
-    //--预测结果--
-    for (int i=0;i<ct;i++)
-        printf ("第<%d>张图片的预测结果::=> \
-        <%s>::probility::[%0.3lf]\r\n\n",0,class_names[i],layer[layers-1][i]);
+    Test_Model("./people.jpg",layer_nodes,layers,
+    &layer,nodes_parm,class_names,ct);
+    Test_Model("./car.jpg",layer_nodes,layers,
+    &layer,nodes_parm,class_names,ct);
     return ct;
 }
 
@@ -387,6 +358,7 @@ void Set_Simulate
             // printf ("DEBUG::i::[%d]\tj::[%d]...\r\n",i,j);
         }
         cur_ly[i] = 1/(1+exp((-1)*tmps));   //g(x)=>激活函数
+        // cur_ly[i] = MAX(0,tmps);               //g(x)=>激活函数
         // printf ("DEBUG::=>cur_ly[%d]::VAL::[%lf]\r\n",i,cur_ly[i]);
     }
     // printf ("DEBUG::=>更新完毕...\r\n");
@@ -443,7 +415,7 @@ chpp Get_Data_Name(int &ct,char data_root[])
     return class_names;
 }
 
-Mat Filiter(Mat &src,int f,int s,int flags,int size) //输入必须是灰度图
+Mat Filiter(Mat src,int f,int s,int flags,int size) //输入必须是灰度图
 {
     //--创建滤波内核--
     int out_size = (size-f)/s+1;
@@ -586,7 +558,7 @@ unsigned char* Extend_Tensor(Mat *img_data,int nums)
 void Back_Simulate
 (double ***model,int pre_ly_index,
  int cur_ly_index, double ***gap,
- double **layer,int pre_nds,int cur_nds)
+ double **layer,int pre_nds,int cur_nds,int pre_pre_nds)
 {
     // printf ("DEBUG::=>更新第<%d>层->第<%d>层的反向传播结果...\r\n",cur_ly_index,pre_ly_index);
     // printf ("DEBUG::=>pre_ly_index::[%d] pre_nds::[%d]\r\n",pre_ly_index,pre_nds);
@@ -599,10 +571,18 @@ void Back_Simulate
         double tmps = 0;
         for (int j=0;j<cur_nds;j++)
         {
-            tmps += (cur_ly[j]*(model[pre_ly_index][i][j]));  
+            tmps += (cur_ly[j]*model[pre_ly_index][i][j]);  
             // printf ("DEBUG::i::[%d]\tj::[%d]...\r\n",i,j);
         }
         pre_ly[i] = tmps*layer[pre_ly_index][i]*(1-layer[pre_ly_index][i]);   //计算节点误差
+        // double z = 0;
+        // for (int j=0;j<pre_pre_nds;j++)
+        //     z += (layer[pre_ly_index-1][j]*model[pre_ly_index-1][j][i]);
+        // if (z<0)
+        //     pre_ly[i] = tmps*0;
+        // else
+        //     pre_ly[i] = tmps*1;
+        // pre_ly[i] = tmps*layer[pre_ly_index][i]*(1-layer[pre_ly_index][i]);
         // if (pre_ly_index != 0)
         //     printf ("DEBUG::=>pre_ly[%d]::VAL::[%0.16lf]\r\n",i,pre_ly[i]);
     }
@@ -640,7 +620,7 @@ void Gd_Simulate
     for(int i=0;i<pre_nds;i++)
         for(int j=0;j<cur_nds;j++)
         {
-            pre_2_cur_parm[i][j] = pre_2_cur_parm[i][j] - (A*model_gap[pre_ly_index][i][j])/sample_nums;
+            pre_2_cur_parm[i][j] = G*pre_2_cur_parm[i][j] - (A*model_gap[pre_ly_index][i][j])/sample_nums;
             // if (pre_ly_index != 0)
             //     printf ("DEBUG::L<%d>K<%d>2<%d>::[%0.6lf]\r\n",pre_ly_index,i,j,pre_2_cur_parm[i][j]);
         }
@@ -652,5 +632,108 @@ void Clear_Model_DGap(double ****model_gap,int layers,unsigned int *layer_nodes)
     for (int i=0;i<layers-1;i++)                       
     for (int j=0;j<layer_nodes[i];j++)
         memset(dgap[i][j],0,sizeof(double)*layer_nodes[i+1]);
+}
+
+Mat Polling_Layer(Mat src,int ly_sz)
+{
+    int out_size = src.rows/ly_sz;
+    Mat out(Size(out_size,out_size),CV_8UC1,Scalar(0));
+    // printf ("FINAL_SIZE::[%d]\r\n",out_size);
+    for (int y=0;y<src.rows;y+=ly_sz)
+    {
+        for (int x=0;x<src.cols;x+=ly_sz)
+        {
+            unsigned char tmps = 0;
+            for (int ystep=0;ystep<ly_sz;ystep++)
+            for (int xstep=0;xstep<ly_sz;xstep++)
+                tmps = MAX(tmps,src.at<uchar>(Point(x+xstep,y+ystep)));
+            out.at<uchar>(Point(x/ly_sz,y/ly_sz))=tmps;
+        }
+    }
+    return out;
+}
+
+void Test_Model(const char *file_route,unsigned int *layer_nodes,
+unsigned int layers,double ***layer,double ***model,char** class_names,
+unsigned int ct)
+{
+    double **ly = (*layer);
+    unsigned char *ts_tensor;
+    double *data_set = (double*)malloc(sizeof(double)*Final_Size*Final_Size*Fliter_Nums);
+    Mat ts_tmps = imread(file_route);
+    if (!ts_tmps.empty())
+    {
+        resize(ts_tmps,ts_tmps,Size(IMG_WIDTH,IMG_HEIGHT),0,0,INTER_LINEAR);
+        cvtColor(ts_tmps,ts_tmps,CV_RGB2GRAY);
+        Mat newtmps[Fliter_Nums];
+        newtmps[0] = Filiter(ts_tmps,3,2,PREWITT_HORI,IMG_HEIGHT);
+        newtmps[1] = Filiter(ts_tmps,3,2,PREWITT_VERT,IMG_HEIGHT);
+        newtmps[2] = Filiter(ts_tmps,3,2,SCHARR_HORI,IMG_HEIGHT);
+        newtmps[3] = Filiter(ts_tmps,3,2,SCHARR_VERT,IMG_HEIGHT);
+        newtmps[4] = Filiter(ts_tmps,3,2,SOBEL_HORI,IMG_HEIGHT);
+        newtmps[5] = Filiter(ts_tmps,3,2,SOBEL_VERT,IMG_HEIGHT);
+        newtmps[0] = Polling_Layer(newtmps[0],6);
+        newtmps[1] = Polling_Layer(newtmps[1],6);
+        newtmps[2] = Polling_Layer(newtmps[2],6);
+        newtmps[3] = Polling_Layer(newtmps[3],6);
+        newtmps[4] = Polling_Layer(newtmps[4],6);
+        newtmps[5] = Polling_Layer(newtmps[5],6);   
+        //--图片数据::[Final_Size^2x1]--
+        //--展开图片特征数据--
+        ts_tensor = Extend_Tensor(newtmps,Fliter_Nums);
+    }
+    for (int j=0;j<Final_Size*Final_Size*Fliter_Nums;j++)
+        data_set[j] = ts_tensor[j] / 255.0;
+    for (int i=0;i<layer_nodes[0];i++)
+            ly[0][i] = data_set[i];
+    //--正向传播--
+    for (int i=1;i<layers;i++)
+    {
+        Set_Simulate(model,i-1,i,
+        &ly,layer_nodes[i-1],layer_nodes[i],layers);
+    }
+    //--预测结果--
+    for (int i=0;i<ct;i++)
+        printf ("第<%d>张图片的预测结果::=> \
+        <%s>::probility::[%0.3lf]\r\n\n",0,class_names[i],ly[layers-1][i]);
+}
+
+void Rate_Learn(unsigned int *layer_nodes,unsigned int tensor_count,double **data_set,
+ double **layer,unsigned int layers,double ***nodes_parm,char** class_names,
+ unsigned int N,int *labels,unsigned int ct)
+{
+    //--fit--
+    //--随机取N图片张量--
+    int correct = 0;
+    for (int j=0;j<N;j++)
+    {
+        int pice = random()%tensor_count;
+        for (int i=0;i<layer_nodes[0];i++)
+            layer[0][i] = data_set[pice][i];
+        //--正向传播--
+        for (int i=1;i<layers;i++)
+        {
+            Set_Simulate(nodes_parm,i-1,i,
+            &layer,layer_nodes[i-1],layer_nodes[i],layers);
+        }
+        //--预测结果--
+        for (int i=0;i<ct;i++)
+            printf ("第<%d>张图片的预测结果::=> \
+            <%s>::probility::[%0.3lf]\r\n",pice,class_names[i],layer[layers-1][i]);
+        printf ("\r\n");
+        int index = -1;
+        for (int i=0;i<ct;i++)
+        {
+            double tmps = 0;
+            if (tmps < layer[layers-1][i])
+            {
+                tmps = layer[layers-1][i];
+                index = i;
+            }
+        }
+        if (index == labels[pice])
+            correct++;
+    }
+    printf ("Correct Rate ::=> [%0.5lf]\r\n",correct/1.0/N);
 }
 
